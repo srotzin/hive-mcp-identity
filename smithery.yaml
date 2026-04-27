@@ -1,0 +1,102 @@
+        # Smithery Registry — HiveIdentity MCP Server
+        # https://smithery.ai
+        # Backend status: v0.1 — pending hivemorph backend build (Q3 2026 spec)
+
+        startCommand:
+          type: http
+          configSchema:
+            type: object
+            properties: {}
+            required: []
+          url: https://hivemorph.onrender.com/mcp/hive-mcp-identity
+
+        name: hive-mcp-identity
+        displayName: HiveIdentity — Agent identity verification — DID resolution, KYC-lite, trust-score lookup, and attestation management
+        version: "1.0.0"
+        description: >
+          MCP server for the Hive Identity platform. Agents resolve DIDs to public profiles, look up trust scores (0-100) from the Hive trust graph, verify specific attestations by hash, and list all attestations issued to or by a DID. Supports KYC-lite verification flows for agent-to-agent trust establishment. Compatible with W3C DID spec and Hive HAHS legal attestation layer. Backend build is Q3 2026. Tool calls currently return HTTP 503 with a feature-gating response — no mock data is ever returned. Submit interest via hive-mcp-connector.
+
+        author:
+          name: Steve Rotzin
+          email: steve@thehiveryiq.com
+          url: https://www.thehiveryiq.com
+
+        license: MIT
+        homepage: https://github.com/srotzin/hive-mcp-identity
+        repository:
+          type: git
+          url: https://github.com/srotzin/hive-mcp-identity
+
+        transport: streamable-http
+        endpoint: https://hivemorph.onrender.com/mcp
+        protocol: "2024-11-05"
+
+        categories:
+          - identity
+  - did
+  - agent-to-agent
+  - web3
+  - compliance
+  - trust
+
+        tags:
+          - mcp
+  - hive
+  - identity
+  - did
+  - trust-score
+  - kyc
+  - attestation
+  - a2a
+  - w3c
+  - ai-agents
+
+        tools:
+              - name: resolve_did
+        description: >
+          Resolve a DID to its public profile: display name, verification methods, service endpoints, and Hive trust metadata. Conforms to W3C DID spec. Backend pending (Q3 2026).
+        inputs:
+          - name: did
+type: string
+required: true
+description: "Decentralized Identifier (DID) to resolve (e.g. did:hive:0x...)"
+      - name: get_trust_score
+        description: >
+          Retrieve the Hive trust score (0-100) for a DID. Factors include on-chain activity, attestation count, repayment history, and peer endorsements. Backend pending (Q3 2026).
+        inputs:
+          - name: did
+type: string
+required: true
+description: "DID to retrieve trust score for"
+        - name: verify_attestation
+          description: >
+            Verify whether a specific attestation (by hash) was issued to a DID and is currently valid. Returns boolean. Used in KYC-lite flows and smart-contract gating. Backend pending (Q3 2026).
+          inputs:
+            - name: did
+  type: string
+  required: true
+  description: "DID to verify attestation for"
+- name: attestation_hash
+  type: string
+  required: true
+  description: "SHA-256 hash of the attestation to verify"
+      - name: list_attestations
+        description: >
+          List all attestations associated with a DID — issued, received, and expired. Returns array of attestation metadata. Backend pending (Q3 2026).
+        inputs:
+          - name: did
+type: string
+required: true
+description: "DID to list attestations for"
+
+        runtime:
+          type: node
+          version: ">=18"
+          command: node server.js
+          env:
+            - name: PORT
+              default: "3000"
+              required: false
+            - name: HIVE_BASE
+              default: "https://hivemorph.onrender.com"
+              required: false

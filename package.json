@@ -1,0 +1,39 @@
+{
+  "name": "hive-mcp-identity",
+  "version": "1.0.0",
+  "description": "MCP server for the Hive Identity platform. Agents resolve DIDs to public profiles, look up trust scores (0-100) from the Hive trust graph, verify specific attestations by hash, and list all attestatio",
+  "type": "module",
+  "main": "server.js",
+  "bin": {
+    "hive-mcp-identity": "./server.js"
+  },
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node --watch server.js"
+  },
+  "keywords": [
+    "mcp",
+    "hive",
+    "identity",
+    "did",
+    "trust-score",
+    "kyc",
+    "attestation",
+    "a2a",
+    "w3c",
+    "ai-agents"
+  ],
+  "author": "Steve Rotzin <steve@thehiveryiq.com> (https://www.thehiveryiq.com)",
+  "license": "MIT",
+  "homepage": "https://github.com/srotzin/hive-mcp-identity",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/srotzin/hive-mcp-identity"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {
+    "express": "^4.19.2"
+  }
+}
