@@ -76,7 +76,7 @@ const SERVICE_CFG = {
   tagline: "W3C DID resolution and agent KYC for autonomous agent counterparties.",
   description: "MCP server for HiveIdentity \u2014 W3C DID resolution and agent KYC on the Hive Civilization. OFAC / FATF screening per agent and per counterparty. USDC settlement on Base L2. Real rails, no mocks.",
   keywords: ["mcp", "model-context-protocol", "x402", "agentic", "ai-agent", "ai-agents", "llm", "hive", "hive-civilization", "identity", "w3c-did", "did", "agent-kyc", "agent-identity", "ofac", "fatf", "usdc", "base", "base-l2", "agent-economy", "a2a"],
-  externalUrl: "https://hive-mcp-gateway.onrender.com/identity",
+  externalUrl: "https://hive-mcp-identity.onrender.com",
   gatewayMount: "/identity",
   version: "1.0.1",
   pricing: [
