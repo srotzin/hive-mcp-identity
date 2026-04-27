@@ -1,7 +1,7 @@
 {
   "name": "hive-mcp-identity",
-  "version": "1.0.1",
-  "description": "MCP server for the Hive Identity platform. Agents resolve DIDs to public profiles, look up trust scores (0-100) from the Hive trust graph, verify specific attestations by hash, and list all attestatio",
+  "version": "1.0.2",
+  "description": "MCP server for HiveIdentity \u2014 W3C DID resolution and agent KYC. Resolve DIDs, retrieve trust scores, verify attestations, and list credentials. OFAC/FATF screening per agent. USDC settlement on Base L2. Scaffold shim \u2014 backend pending Q3 2026.",
   "type": "module",
   "main": "server.js",
   "bin": {
@@ -26,13 +26,15 @@
     "did",
     "agent-kyc",
     "agent-identity",
-    "ofac",
-    "fatf",
+    "trust-scoring",
     "usdc",
     "base",
     "base-l2",
-    "agent-economy",
-    "a2a"
+    "a2a",
+    "autonomous-agent",
+    "agent-infrastructure",
+    "real-rails",
+    "on-chain-settlement"
   ],
   "author": "Steve Rotzin <steve@thehiveryiq.com> (https://www.thehiveryiq.com)",
   "license": "MIT",

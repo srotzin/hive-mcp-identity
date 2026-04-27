@@ -1,99 +1,57 @@
+<!-- HIVE_BANNER_V1 -->
+<p align="center">
+  <a href="https://hive-mcp-gateway.onrender.com/identity/health">
+    <img src="https://hive-mcp-gateway.onrender.com/identity/og.svg" alt="HiveIdentity · W3C DID & Agent KYC MCP" width="100%"/>
+  </a>
+</p>
+
+<h1 align="center">hive-mcp-identity</h1>
+
+<p align="center"><strong>W3C DID resolution and agent KYC for autonomous agent counterparties.</strong></p>
+
+<p align="center">
+  <a href="https://smithery.ai/server/hivecivilization"><img alt="Smithery" src="https://img.shields.io/badge/Smithery-hivecivilization-C08D23?style=flat-square"/></a>
+  <a href="https://glama.ai/mcp/servers"><img alt="Glama" src="https://img.shields.io/badge/Glama-pending-C08D23?style=flat-square"/></a>
+  <a href="https://hive-mcp-gateway.onrender.com/identity/health"><img alt="Live" src="https://img.shields.io/badge/gateway-live-C08D23?style=flat-square"/></a>
+  <a href="https://github.com/srotzin/hive-mcp-identity/releases"><img alt="Release" src="https://img.shields.io/github/v/release/srotzin/hive-mcp-identity?style=flat-square&color=C08D23"/></a>
+  <a href="LICENSE"><img alt="License" src="https://img.shields.io/badge/license-MIT-C08D23?style=flat-square"/></a>
+</p>
+
+<p align="center">
+  <code>https://hive-mcp-gateway.onrender.com/identity/mcp</code>
+</p>
+
+---
+
 # HiveIdentity
 
-**DID resolution, trust scoring, and attestation management on Hive Civilization rails**
+**W3C DID resolution and agent KYC for autonomous agent counterparties.**
 
-`hive-mcp-identity` is an MCP server for the Hive Identity platform. Agents resolve DIDs to public profiles, retrieve trust scores (0-100) from the Hive trust graph, verify specific attestations by hash, and list all attestations issued to or by a DID. Conforms to the W3C DID spec and integrates with the Hive HAHS legal attestation layer.
+MCP server for HiveIdentity — W3C DID resolution and agent KYC. Resolve DIDs, retrieve trust scores, verify attestations, and list credentials. OFAC/FATF screening per agent. USDC settlement on Base L2. Scaffold shim — backend pending Q3 2026.
 
-> **Backend status:** The hivemorph backend for this vertical is not yet built. All `tools/call` requests return HTTP 503 — no mock data is returned. Backend target: Q3 2026.
+## What this is
 
-> Council R4 — staged for Q3 2026 backend build
+`hive-mcp-identity` is a Model Context Protocol (MCP) server that exposes the HiveIdentity platform on the Hive Civilization to any MCP-compatible client (Claude Desktop, Cursor, Manus, etc.). The server proxies to the live production gateway at `https://hive-mcp-gateway.onrender.com`.
 
----
+- **Protocol:** MCP 2024-11-05 over Streamable-HTTP / JSON-RPC 2.0
+- **x402 micropayments:** every paid call produces a real on-chain settlement
+- **Rails:** USDC on Base L2 — real rails, no mocks
+- **Author:** Steve Rotzin · Hive Civilization · brand gold `#C08D23`
 
-## Backend Status
+## Endpoints
 
-All `tools/call` requests return HTTP 503:
-```json
-{ "error": "feature gating: backend pending; submit interest at hive-mcp-connector" }
-```
-`tools/list`, `/health`, and `/.well-known/mcp.json` are operational and return the full tool catalog.
-No mock data is returned at any point.
-
----
-
-## Protocol
-
-- **Spec:** MCP 2024-11-05 over Streamable-HTTP / JSON-RPC 2.0
-- **Transport:** `POST /mcp`
-- **Discovery:** `GET /.well-known/mcp.json`
-- **Health:** `GET /health`
-- **Settlement:** USDC on Base, Ethereum, Solana via x402 (real rails only, for write operations when backend is live)
-- **Brand gold:** Pantone 1245 C / `#C08D23`
-- **Tools:** 4
-
----
-
-## Tools
-
-| Tool | Description |
-|---|---|
-| `resolve_did` | Resolves a DID to its public profile: display name, verification methods, service endpoints, and Hive trust metadata. Conforms to W3C DID spec. Backend pending (Q3 2026). |
-| `get_trust_score` | Returns the Hive trust score (0-100) for a DID. Factors: on-chain activity, attestation count, repayment history, peer endorsements. Backend pending (Q3 2026). |
-| `verify_attestation` | Verifies whether a specific attestation (by hash) was issued to a DID and is currently valid. Returns boolean. Backend pending (Q3 2026). |
-| `list_attestations` | Lists all attestations associated with a DID — issued, received, and expired. Returns array of attestation metadata. Backend pending (Q3 2026). |
-
----
-
-## Backend Endpoints (pending Q3 2026)
-
-| Method | Path | Purpose |
-|---|---|---|
-| `GET` | `/v1/identity/resolve` | DID → public profile (W3C spec) |
-| `GET` | `/v1/identity/trust` | Trust score (0-100) from Hive trust graph |
-| `GET` | `/v1/identity/attestations/verify` | Verify attestation hash against DID |
-| `GET` | `/v1/identity/attestations` | List all attestations for a DID |
-
----
-
-## Run Locally
-
-```bash
-git clone https://github.com/srotzin/hive-mcp-identity.git
-cd hive-mcp-identity
-npm install
-npm start
-# Server on http://localhost:3000
-# tools/list returns tool catalog; tools/call returns 503 (backend pending)
-curl http://localhost:3000/health
-curl http://localhost:3000/.well-known/mcp.json
-curl -s -X POST http://localhost:3000/mcp \
-  -H 'Content-Type: application/json' \
-  -d '{"jsonrpc":"2.0","id":1,"method":"tools/list"}' | jq .result.tools[].name
-```
-
----
-
-## Connect from an MCP Client
-
-Add to your `mcp.json`:
-
-```json
-{
-  "mcpServers": {
-    "hive_mcp_identity": {
-      "command": "npx",
-      "args": ["-y", "mcp-remote@latest", "https://your-deployed-host/mcp"]
-    }
-  }
-}
-```
-
----
-
-## Hive Civilization
-
-Part of the [Hive Civilization](https://www.thehiveryiq.com) — sovereign DID, USDC settlement, HAHS legal contracts, agent-to-agent rails.
+| Path | Purpose |
+|------|---------|
+| `POST /mcp` | JSON-RPC 2.0 / MCP 2024-11-05 |
+| `GET  /` | HTML landing with comprehensive meta tags + JSON-LD |
+| `GET  /health` | Health + telemetry |
+| `GET  /.well-known/mcp.json` | MCP discovery descriptor |
+| `GET  /.well-known/security.txt` | RFC 9116 security contact |
+| `GET  /robots.txt` | Allow-all crawl policy |
+| `GET  /sitemap.xml` | Crawler sitemap |
+| `GET  /og.svg` | 1200×630 Hive-gold OG image |
+| `GET  /seo.json` | JSON-LD structured data (SoftwareApplication) |
 
 ## License
 
-MIT (c) 2026 Steve Rotzin / Hive Civilization
+MIT. © Steve Rotzin / Hive Civilization. Brand gold `#C08D23` (Pantone 1245 C). Never `#f5c518`.
