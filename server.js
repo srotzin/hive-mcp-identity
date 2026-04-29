@@ -172,7 +172,7 @@ app.get('/seo.json', (req, res) => res.json(seoJson(SERVICE_CFG)));
 // ─── Schema discoverability ────────────────────────────────────────────────
 const AGENT_CARD = {
   name: SERVICE,
-  description: `MCP server for HiveIdentity — W3C DID resolution and agent KYC. Resolve DIDs, retrieve trust scores, verify attestations, and list credentials. OFAC/FATF screening per agent. USDC settlement on Base L2. Scaffold shim — backend pending Q3 2026.. New agents: first call free. Loyalty: every 6th paid call is free. Pay in USDC on Base L2.`,
+  description: 'MCP server for HiveIdentity — W3C DID resolution and agent KYC. Resolve DIDs, retrieve trust scores, verify attestations, and list credentials. OFAC/FATF screening per agent. USDC settlement on Base L2.. New agents: first call free. Loyalty: every 6th paid call is free. Pay in USDC on Base L2.',
   url: `https://${SERVICE}.onrender.com`,
   provider: {
     organization: 'Hive Civilization',
@@ -197,7 +197,12 @@ const AGENT_CARD = {
   },
   defaultInputModes: ['application/json'],
   defaultOutputModes: ['application/json'],
-  skills: TOOLS.map(t => ({ name: t.name, description: t.description })),
+  skills: [
+    { name: 'resolve_did', description: 'Resolve a DID to its public profile: display name, verification methods, service endpoints, and Hive trust metadata. Conforms to W3C DID spec. Backend pending (Q3 2026).' },
+    { name: 'get_trust_score', description: 'Retrieve the Hive trust score (0-100) for a DID. Factors include on-chain activity, attestation count, repayment history, and peer endorsements. Backend pending (Q3 2026).' },
+    { name: 'verify_attestation', description: 'Verify whether a specific attestation (by hash) was issued to a DID and is currently valid. Returns boolean. Used in KYC-lite flows and smart-contract gating. Backend pending (Q3 2026).' },
+    { name: 'list_attestations', description: 'List all attestations associated with a DID — issued, received, and expired. Returns array of attestation metadata. Backend pending (Q3 2026).' },
+  ],
   extensions: {
     hive_pricing: {
       currency: 'USDC',
@@ -215,7 +220,7 @@ const AP2 = {
   agent: {
     name: SERVICE,
     did: `did:web:${SERVICE}.onrender.com`,
-    description: `MCP server for HiveIdentity — W3C DID resolution and agent KYC. Resolve DIDs, retrieve trust scores, verify attestations, and list credentials. OFAC/FATF screening per agent. USDC settlement on Base L2. Scaffold shim — backend pending Q3 2026.. New agents: first call free. Loyalty: every 6th paid call is free. Pay in USDC on Base L2.`,
+    description: 'MCP server for HiveIdentity — W3C DID resolution and agent KYC. Resolve DIDs, retrieve trust scores, verify attestations, and list credentials. OFAC/FATF screening per agent. USDC settlement on Base L2.. New agents: first call free. Loyalty: every 6th paid call is free. Pay in USDC on Base L2.',
   },
   endpoints: {
     mcp: `https://${SERVICE}.onrender.com/mcp`,
@@ -235,7 +240,7 @@ const AP2 = {
 };
 
 app.get('/.well-known/agent-card.json', (req, res) => res.json(AGENT_CARD));
-app.get('/.well-known/ap2.json', (req, res) => res.json(AP2));
+app.get('/.well-known/ap2.json',         (req, res) => res.json(AP2));
 
 
 app.listen(PORT, () => {
