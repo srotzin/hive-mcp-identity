@@ -172,7 +172,7 @@ app.get('/seo.json', (req, res) => res.json(seoJson(SERVICE_CFG)));
 // ─── Schema discoverability ────────────────────────────────────────────────
 const AGENT_CARD = {
   name: SERVICE,
-  description: 'MCP server for HiveIdentity — W3C DID resolution and agent KYC. Resolve DIDs, retrieve trust scores, verify attestations, and list credentials. OFAC/FATF screening per agent. USDC settlement on Base L2.. New agents: first call free. Loyalty: every 6th paid call is free. Pay in USDC on Base L2.',
+  description: 'MCP server for HiveIdentity — W3C DID resolution and agent KYC. Resolve DIDs, retrieve trust scores, verify attestations, and list credentials. OFAC/FATF screening per agent. USDC settlement on Base L2. New agents: first call free. Loyalty: every 6th paid call is free. Pay in USDC on Base L2.',
   url: `https://${SERVICE}.onrender.com`,
   provider: {
     organization: 'Hive Civilization',
@@ -220,7 +220,7 @@ const AP2 = {
   agent: {
     name: SERVICE,
     did: `did:web:${SERVICE}.onrender.com`,
-    description: 'MCP server for HiveIdentity — W3C DID resolution and agent KYC. Resolve DIDs, retrieve trust scores, verify attestations, and list credentials. OFAC/FATF screening per agent. USDC settlement on Base L2.. New agents: first call free. Loyalty: every 6th paid call is free. Pay in USDC on Base L2.',
+    description: 'MCP server for HiveIdentity — W3C DID resolution and agent KYC. Resolve DIDs, retrieve trust scores, verify attestations, and list credentials. OFAC/FATF screening per agent. USDC settlement on Base L2. New agents: first call free. Loyalty: every 6th paid call is free. Pay in USDC on Base L2.',
   },
   endpoints: {
     mcp: `https://${SERVICE}.onrender.com/mcp`,
