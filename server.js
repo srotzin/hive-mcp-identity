@@ -22,6 +22,123 @@ app.use(express.json());
 const PORT = process.env.PORT || 3000;
 const HIVE_BASE = process.env.HIVE_BASE || 'https://hivemorph.onrender.com';
 
+// ─── MPP Rail Config ─────────────────────────────────────────────────────────
+// Machine Payments Protocol (MPP) — Stripe + Tempo co-authored standard
+// Implemented per IETF draft-ryan-httpauth-payment Payment header scheme
+// Runs alongside x402: either rail satisfies payment. Same fee table.
+
+const TEMPO_RPC_URL = process.env.TEMPO_RPC_URL || 'https://rpc.tempo.xyz';
+const MPP_TREASURY  = '0x15184bf50b3d3f52b60434f8942b7d52f2eb436e'; // Monroe Base (EVM-compat)
+const TEMPO_USDCE   = '0x20c000000000000000000000b9537d11c60e8b50'; // TIP-20 USDCe
+const BASE_USDC     = '0x833589fcd6edb6e08f4c7c32d4f71b54bda02913';
+const TRANSFER_TOPIC = '0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef';
+
+const _mppCache = new Map();
+setInterval(() => { const now = Date.now(); for (const [k, v] of _mppCache) { if (now - v.ts > 600_000) _mppCache.delete(k); } }, 60_000);
+
+// Parse IETF draft-ryan-httpauth-payment Payment header
+function parseMppHeader(req) {
+  const hdr = req.headers['payment'] || req.headers['x-payment'] || req.headers['payment-credential'] || '';
+  if (!hdr) return { found: false };
+  // Try Payment: scheme="mpp", tx_hash="0x...", rail="tempo"
+  const params = {};
+  for (const part of hdr.split(',')) {
+    const m = part.trim().match(/^([\w-]+)="([^"]*)"$/);
+    if (m) params[m[1]] = m[2];
+  }
+  if (params.tx_hash || params.scheme === 'mpp' || hdr.startsWith('0x')) {
+    return {
+      found:  true,
+      txHash: params.tx_hash || (hdr.startsWith('0x') ? hdr.trim() : ''),
+      rail:   params.rail || req.headers['x-mpp-rail'] || 'tempo',
+      amount: parseFloat(params.amount || '0') || null,
+    };
+  }
+  return { found: false };
+}
+
+async function verifyMppTx(txHash, expectedAmount, rail) {
+  const rpc      = rail === 'tempo' ? TEMPO_RPC_URL : 'https://mainnet.base.org';
+  const contract = rail === 'tempo' ? TEMPO_USDCE   : BASE_USDC;
+  try {
+    const r = await fetch(rpc, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ jsonrpc:'2.0', id:1, method:'eth_getTransactionReceipt', params:[txHash] }),
+      signal: AbortSignal.timeout(8000),
+    });
+    const { result: receipt } = await r.json();
+    if (!receipt || receipt.status !== '0x1') return { ok:false, reason:'not confirmed' };
+    for (const log of receipt.logs) {
+      if (log.address?.toLowerCase() === contract && log.topics?.[0] === TRANSFER_TOPIC) {
+        const to = '0x' + log.topics[2].slice(26).toLowerCase();
+        if (to === MPP_TREASURY) {
+          const amt = parseInt(log.data, 16) / 1e6;
+          if (amt >= expectedAmount - 0.001) return { ok:true, amt };
+          return { ok:false, reason:`insufficient: ${amt} < ${expectedAmount}` };
+        }
+      }
+    }
+    return { ok:false, reason:'no matching USDC Transfer to treasury' };
+  } catch (e) { return { ok:false, reason:e.message }; }
+}
+
+// MPP per-call middleware — mounts on /v1 after x402 subscription gating
+async function mppMiddleware(req, res, next) {
+  const mpp = parseMppHeader(req);
+  if (!mpp.found) return next(); // No MPP credential — pass through
+
+  const { txHash, rail, amount } = mpp;
+  if (!txHash) return next();
+
+  if (_mppCache.has(txHash)) {
+    const c = _mppCache.get(txHash);
+    if (c.ok) {
+      res.set('Payment-Receipt', `mpp:${txHash}:verified`);
+      res.set('X-Hive-Payment-Rail', 'mpp');
+      return next();
+    }
+    return res.status(402).json({ error:'mpp_payment_invalid', reason:c.reason, code:'MPP_PAYMENT_INVALID' });
+  }
+
+  const expectedAmount = amount || 0.001; // identity DID lookup default
+  const v = await verifyMppTx(txHash, expectedAmount, rail);
+  _mppCache.set(txHash, { ...v, ts: Date.now() });
+
+  if (!v.ok) {
+    return res.status(402).json({
+      error: 'mpp_payment_invalid',
+      reason: v.reason,
+      code:   'MPP_PAYMENT_INVALID',
+      hint:   'Provide a confirmed Tempo or Base USDC transaction in the Payment header.',
+    });
+  }
+
+  // MPP verified — emit Spectral receipt (non-blocking) with payment_method: "mpp"
+  fetch('https://hive-receipt.onrender.com/v1/receipt/sign', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      issuer_did: 'did:hive:identity',
+      event_type: 'api_payment',
+      amount_usd: String(expectedAmount),
+      currency: 'USDC',
+      network: rail,
+      pay_to: MPP_TREASURY,
+      tx_hash: txHash,
+      payment_method: 'mpp',
+      rail: rail,
+      timestamp: new Date().toISOString(),
+    }),
+    signal: AbortSignal.timeout(4000),
+  }).catch(() => {});
+
+  res.set('Payment-Receipt',       `mpp:${txHash}:${rail}`);
+  res.set('X-Hive-Payment-Rail',  'mpp');
+  res.set('X-Hive-Payment-Method','mpp');
+  return next();
+}
+
 // ─── Tool definitions ────────────────────────────────────────────────────────
 const TOOLS = [
     {
@@ -191,14 +308,11 @@ const AGENT_CARD = {
     stateTransitionHistory: false,
   },
   authentication: {
-    schemes: ['x402'],
-    credentials: {
-      type: 'x402',
-      asset: 'USDC',
-      network: 'base',
-      asset_address: '0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913',
-      recipient: '0x15184bf50b3d3f52b60434f8942b7d52f2eb436e',
-    },
+    schemes: ['x402', 'mpp'],
+    credentials: [
+      { type: 'x402', asset: 'USDC', network: 'base', asset_address: '0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913', recipient: '0x15184bf50b3d3f52b60434f8942b7d52f2eb436e' },
+      { type: 'mpp', asset: 'USDCe', network: 'tempo', asset_address: '0x20c000000000000000000000b9537d11c60e8b50', recipient: '0x15184bf50b3d3f52b60434f8942b7d52f2eb436e', ietf_draft: 'draft-ryan-httpauth-payment' },
+    ],
   },
   defaultInputModes: ['application/json'],
   defaultOutputModes: ['application/json'],
@@ -232,13 +346,22 @@ const AP2 = {
     agent_card: `https://${SERVICE}.onrender.com/.well-known/agent-card.json`,
   },
   payments: {
-    schemes: ['x402'],
+    schemes: ['x402', 'mpp'],
     primary: {
       scheme: 'x402',
       network: 'base',
       asset: 'USDC',
       asset_address: '0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913',
       recipient: '0x15184bf50b3d3f52b60434f8942b7d52f2eb436e',
+    },
+    mpp: {
+      scheme: 'mpp',
+      network: 'tempo',
+      asset: 'USDCe',
+      asset_address: '0x20c000000000000000000000b9537d11c60e8b50',
+      recipient: '0x15184bf50b3d3f52b60434f8942b7d52f2eb436e',
+      ietf_draft: 'draft-ryan-httpauth-payment',
+      tempo_rpc: 'https://rpc.tempo.xyz',
     },
   },
   brand: { color: '#C08D23', name: 'Hive Civilization' },
@@ -321,8 +444,14 @@ app.post('/v1/subscription', async (req, res) => {
 
   // Enterprise tier can invoice monthly (no tx_hash required at activation).
   if (tier !== 'enterprise' && !tx_hash) {
+    // Advertise both rails in WWW-Authenticate (IETF draft-ryan-httpauth-payment)
+    res.set('WWW-Authenticate', [
+      `x402 realm="hive-mcp-identity", amount="${t.price_usd}", currency="USDC", network="base", address="0x15184bf50b3d3f52b60434f8942b7d52f2eb436e"`,
+      `Payment scheme="mpp", realm="hive-mcp-identity", amount="${t.price_usd}", currency="USDCe", network="tempo", address="0x15184bf50b3d3f52b60434f8942b7d52f2eb436e"`,
+    ].join(', '));
     return res.status(402).json({
       error: 'payment_required',
+      rails_accepted: ['x402', 'mpp'],
       x402: {
         type: 'x402', version: '1', kind: 'subscription_identity',
         asking_usd: t.price_usd,
@@ -334,7 +463,16 @@ app.post('/v1/subscription', async (req, res) => {
         tier, label: t.label,
         bogo: { first_call_free: true, loyalty_every_n: 6 },
       },
-      note: `Submit tx_hash for ${t.price_usd} USDC/mo to 0x15184bf50b3d3f52b60434f8942b7d52f2eb436e on Base.`,
+      mpp: {
+        scheme: 'mpp',
+        asking_usd: t.price_usd,
+        asset: 'USDCe', asset_address: '0x20c000000000000000000000b9537d11c60e8b50',
+        network: 'tempo', pay_to: '0x15184bf50b3d3f52b60434f8942b7d52f2eb436e',
+        tempo_rpc: 'https://rpc.tempo.xyz',
+        how_to_pay: `Payment: scheme="mpp", tx_hash="<tx>", rail="tempo", amount="${t.price_usd}"`,
+        ietf_draft: 'draft-ryan-httpauth-payment',
+      },
+      note: `Submit tx_hash for ${t.price_usd} USDC/mo to 0x15184bf50b3d3f52b60434f8942b7d52f2eb436e on Base (x402) or Tempo (MPP).`,
     });
   }
 
@@ -388,6 +526,11 @@ app.post('/v1/subscription/verify', (req, res) => {
     brand: '#C08D23',
   });
 });
+
+// ─── MPP Middleware mount (alongside x402 subscription gating) ────────────────
+// Both rails accept on same routes. mppMiddleware checks Payment header.
+app.use('/v1', mppMiddleware);
+app.use('/mcp', mppMiddleware);
 
 // ─────────────────────────────────────────────────────────────────────────────
 
