@@ -248,6 +248,48 @@ app.post('/mcp', async (req, res) => {
 });
 
 // ─── Discovery + health ──────────────────────────────────────────────────────
+// MPP OpenAPI Discovery — required for MPPScan auto-discovery
+app.get('/openapi.json', (req, res) => {
+  res.set('Cache-Control', 'public, max-age=300');
+  res.json({
+    openapi: '3.0.3',
+    info: {
+      title: 'HiveIdentity — W3C DID & Agent KYC API',
+      version: '1.0.1',
+      description: 'W3C DID resolution and agent KYC for autonomous agent counterparties. Accepts x402 and MPP rails.',
+      contact: { name: 'Hive Civilization', url: 'https://thehiveryiq.com', email: 'steve@thehiveryiq.com' },
+    },
+    servers: [{ url: 'https://hive-mcp-identity.onrender.com' }],
+    'x-mpp': {
+      realm: 'hive-mcp-identity.onrender.com',
+      payment: { method: 'tempo', currency: '0x20c000000000000000000000b9537d11c60e8b50', decimals: 6, recipient: '0x15184bf50b3d3f52b60434f8942b7d52f2eb436e' },
+      rails: ['x402', 'mpp'],
+      categories: ['identity', 'trust'],
+      integration: 'first-party',
+      tags: ['did', 'w3c-did', 'agent-kyc', 'identity', 'trust-score', 'attestation', 'federation'],
+      treasury: '0x15184bf50b3d3f52b60434f8942b7d52f2eb436e',
+    },
+    paths: {
+      '/v1/subscription': {
+        post: {
+          summary: 'Subscribe (Starter/Pro/Enterprise)',
+          description: 'Activate subscription. Starter $99/mo, Pro $299/mo, Enterprise $999/mo. x402 or MPP.',
+          'x-mpp-charge': { amount: '99000000', intent: 'charge' },
+          responses: { '200': { description: 'Subscription activated' }, '402': { description: 'Payment required — x402 or MPP' } },
+        },
+      },
+      '/mcp': {
+        post: {
+          summary: 'MCP JSON-RPC endpoint',
+          description: 'W3C DID resolve, trust score lookup, attestation verify, list attestations. $0.001/call.',
+          'x-mpp-charge': { amount: '1000', intent: 'charge' },
+          responses: { '200': { description: 'Tool result' }, '402': { description: 'Payment required' } },
+        },
+      },
+    },
+  });
+});
+
 app.get('/health', (req, res) => res.json({
   status: 'ok',
   service: 'hive-mcp-identity',
